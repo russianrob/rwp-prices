@@ -78,6 +78,7 @@ function parseWeaponCSV(csvText) {
     const bonusGroups = {};
     const classGroups = {};
     const comboGroups = {};
+    const weaponMaxBonus = {};  // track bonus on highest sale per weapon+rarity
 
     for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
@@ -99,10 +100,21 @@ function parseWeaponCSV(csvText) {
         if (!weaponGroups[wKey]) weaponGroups[wKey] = [];
         weaponGroups[wKey].push(price);
 
-        // Bonuses + combos (grouped by weapon rarity — CDN has no bonus level data)
+        // Track which bonuses were on the max-priced sale
         const bonusId1 = cols[14];
-        if (bonusId1 && BONUS_ID_MAP[bonusId1]) {
-            const bName1 = BONUS_ID_MAP[bonusId1];
+        const bName1 = (bonusId1 && BONUS_ID_MAP[bonusId1]) ? BONUS_ID_MAP[bonusId1] : null;
+        const bonusId2 = (cols.length > 16) ? cols[16] : null;
+        const bName2 = (bonusId2 && BONUS_ID_MAP[bonusId2]) ? BONUS_ID_MAP[bonusId2] : null;
+
+        if (!weaponMaxBonus[wKey] || price > weaponMaxBonus[wKey].price) {
+            const bonusNames = [];
+            if (bName1) bonusNames.push(bName1);
+            if (bName2) bonusNames.push(bName2);
+            weaponMaxBonus[wKey] = { price: price, bonuses: bonusNames };
+        }
+
+        // Bonuses + combos (grouped by weapon rarity — CDN has no bonus level data)
+        if (bName1) {
             const bKey1 = bName1 + '|' + rarityName;
             if (!bonusGroups[bKey1]) bonusGroups[bKey1] = [];
             bonusGroups[bKey1].push(price);
@@ -110,17 +122,13 @@ function parseWeaponCSV(csvText) {
             if (!comboGroups[cbKey1]) comboGroups[cbKey1] = [];
             comboGroups[cbKey1].push(price);
         }
-        if (cols.length > 16) {
-            const bonusId2 = cols[16];
-            if (bonusId2 && BONUS_ID_MAP[bonusId2]) {
-                const bName2 = BONUS_ID_MAP[bonusId2];
-                const bKey2 = bName2 + '|' + rarityName;
-                if (!bonusGroups[bKey2]) bonusGroups[bKey2] = [];
-                bonusGroups[bKey2].push(price);
-                const cbKey2 = weaponName + '|' + bName2 + '|' + rarityName;
-                if (!comboGroups[cbKey2]) comboGroups[cbKey2] = [];
-                comboGroups[cbKey2].push(price);
-            }
+        if (bName2) {
+            const bKey2 = bName2 + '|' + rarityName;
+            if (!bonusGroups[bKey2]) bonusGroups[bKey2] = [];
+            bonusGroups[bKey2].push(price);
+            const cbKey2 = weaponName + '|' + bName2 + '|' + rarityName;
+            if (!comboGroups[cbKey2]) comboGroups[cbKey2] = [];
+            comboGroups[cbKey2].push(price);
         }
 
         // Class group
@@ -151,11 +159,24 @@ function parseWeaponCSV(csvText) {
         return result;
     }
 
+    // Build max bonus map: weaponName -> { rarity: [bonus1, bonus2, ...] }
+    const maxBonusMap = {};
+    for (const key of Object.keys(weaponMaxBonus)) {
+        const parts = key.split('|');
+        const name = parts[0];
+        const rar = parts[1];
+        if (weaponMaxBonus[key].bonuses.length > 0) {
+            if (!maxBonusMap[name]) maxBonusMap[name] = {};
+            maxBonusMap[name][rar] = weaponMaxBonus[key].bonuses;
+        }
+    }
+
     return {
         weaponPrices: computePercentiles(weaponGroups, 2),
         bonusPrices: computePercentiles(bonusGroups, 2),
         classPrices: computePercentiles(classGroups, 2),
-        weaponComboPrices: computePercentiles(comboGroups, 3)
+        weaponComboPrices: computePercentiles(comboGroups, 3),
+        weaponMaxBonus: maxBonusMap
     };
 }
 
@@ -276,6 +297,7 @@ async function main() {
         armourSetPrices: armour.armourSetPrices,
         weaponComboPrices: weapon.weaponComboPrices,
         armourComboPrices: armour.armourComboPrices,
+        weaponMaxBonus: weapon.weaponMaxBonus,
         timestamp: Date.now()
     };
 
