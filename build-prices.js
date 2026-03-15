@@ -2,7 +2,7 @@
 /**
  * build-prices.js
  * Downloads weapon + armour auction CSVs from CDN, computes all price
- * percentiles (weapon, bonus, class, set, and weapon+bonus combos),
+ * min/median/max prices (weapon, bonus, class, set, and weapon+bonus combos),
  * and writes the result to rwp-prices.json.
  *
  * Used by the GitHub Action to keep PDA price data fresh.
@@ -142,9 +142,9 @@ function parseWeaponCSV(csvText) {
             const rar = parts[splitCount - 1];
             if (!result[name]) result[name] = {};
             result[name][rar] = [
-                Math.round(percentile(arr, 25)),
+                arr[0],
                 Math.round(percentile(arr, 50)),
-                Math.round(percentile(arr, 75)),
+                arr[arr.length - 1],
                 arr.length
             ];
         }
@@ -231,9 +231,9 @@ function parseArmourCSV(csvText) {
             const rar = parts[splitCount - 1];
             if (!result[name]) result[name] = {};
             result[name][rar] = [
-                Math.round(percentile(arr, 25)),
+                arr[0],
                 Math.round(percentile(arr, 50)),
-                Math.round(percentile(arr, 75)),
+                arr[arr.length - 1],
                 arr.length
             ];
         }
