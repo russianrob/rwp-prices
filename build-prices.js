@@ -37,6 +37,74 @@ const ARMOUR_BONUS_MAP = {"112":"Kinetokinesis","115":"Immutable","121":"Irrepre
 
 const RARITY_MAP = { '2': 'Yellow', '3': 'Orange', '4': 'Red' };
 
+// ─── Bonus Color Ranges (per-bonus level → color tier) ───────
+var BONUS_COLOR_RANGES = {
+    '50':  { yellow: [50,73],   orange: [77,98],   red: [114,149] },
+    '72':  { yellow: [50,69],   orange: [70,93],   red: [110,148] },
+    '52':  { yellow: [30,40],   orange: [45,52],   red: [79,96] },
+    '54':  { yellow: [20,34],   orange: [39,53],   red: [60,87] },
+    '57':  { yellow: [20,30],   orange: [31,44],   red: [53,67] },
+    '51':  { yellow: [25,37],   orange: [41,59],   red: [73,96] },
+    '85':  { yellow: [10,11],   orange: [12,14],   red: [17,17] },
+    '67':  { yellow: [50,66],   orange: [70,99],   red: [102,127] },
+    '55':  { yellow: [25,29],   orange: [30,36],   red: [43,49] },
+    '45':  { yellow: [20,28],   orange: [29,40],   red: [52,58] },
+    '49':  { yellow: [50,72],   orange: [76,102],  red: [133,133] },
+    '47':  { yellow: [50,74],   orange: [75,110],  red: [124,157] },
+    '63':  { yellow: [25,45],   orange: [46,72],   red: [76,123] },
+    '62':  { yellow: [2,3],     orange: [4,6],     red: [9,10] },
+    '86':  { yellow: [3,4],     orange: [5,9],     red: [10,15] },
+    '74':  { yellow: [10,15],   orange: [16,24],   red: [32,32] },
+    '105': { yellow: [15,23],   orange: [25,35],   red: [40,54] },
+    '87':  { yellow: [52,85],   orange: [90,140],  red: [180,206] },
+    '56':  { yellow: [15,18],   orange: [19,24],   red: [26,34] },
+    '75':  { yellow: [15,17],   orange: [18,22],   red: [23,28] },
+    '1':   { yellow: [7,9],     orange: [10,13],   red: [14,21] },
+    '82':  { yellow: [10,11],   orange: [12,12],   red: [13,17] },
+    '79':  { yellow: [15,19],   orange: [20,24],   red: [32,32] },
+    '80':  { yellow: [5,6],     orange: [7,9],     red: [10,14] },
+    '64':  { yellow: [10,15],   orange: [16,23],   red: [26,34] },
+    '53':  { yellow: [20,31],   orange: [38,49],   red: [60,66] },
+    '83':  { yellow: [50,59],   orange: [62,71],   red: [72,93] },
+    '102': { yellow: [100,100] },
+    '61':  { yellow: [15,18],   orange: [19,25],   red: [26,35] },
+    '59':  { yellow: [5,8],     red: [17,18] },
+    '84':  { yellow: [50,59],   orange: [62,70],   red: [71,87] },
+    '101': { yellow: [25,28],   orange: [30,37],   red: [38,49] },
+    '21':  { yellow: [20,25],   orange: [26,33],   red: [36,49] },
+    '68':  { yellow: [15,21],   orange: [22,32],   red: [34,49] },
+    '14':  { yellow: [20,28],   orange: [29,38],   red: [44,59] },
+    '66':  { yellow: [20,27],   orange: [29,39],   red: [41,57] },
+    '88':  { yellow: [50,88],   orange: [91,149],  red: [154,219] },
+    '65':  { yellow: [4,5],     orange: [6,10],    red: [11,18] },
+    '41':  { yellow: [10,12],   orange: [13,17],   red: [18,24] },
+    '43':  { yellow: [50,69],   orange: [76,90],   red: [132,132] },
+    '44':  { yellow: [20,28],   orange: [29,41],   red: [43,64] },
+    '73':  { yellow: [1,1],     orange: [2,2],     red: [4,4] },
+    '71':  { yellow: [20,27],   orange: [28,37],   red: [40,52] },
+    '20':  { yellow: [30,43],   orange: [44,54],   red: [85,96] },
+    '58':  { yellow: [10,15],   orange: [16,23],   red: [25,40] },
+    '60':  { yellow: [25,31],   orange: [33,40],   red: [41,49] },
+    '78':  { yellow: [3,4],     orange: [5,7],     red: [8,11] },
+    '48':  { yellow: [50,71],   orange: [76,105],  red: [119,170] },
+    '81':  { yellow: [15,19],   orange: [20,27],   red: [28,45] },
+    '46':  { yellow: [20,28],   orange: [29,40],   red: [44,63] },
+    '76':  { yellow: [125,145], orange: [146,167], red: [177,221] },
+    '42':  { yellow: [20,28],   orange: [29,42],   red: [45,63] }
+};
+
+function getBonusColor(bonusId, level) {
+    var ranges = BONUS_COLOR_RANGES[String(bonusId)];
+    if (!ranges) return null;
+    if (ranges.red && level >= ranges.red[0] && level <= ranges.red[1]) return 'Red';
+    if (ranges.orange && level >= ranges.orange[0] && level <= ranges.orange[1]) return 'Orange';
+    if (ranges.yellow && level >= ranges.yellow[0] && level <= ranges.yellow[1]) return 'Yellow';
+    if (ranges.red && level >= ranges.red[0]) return 'Red';
+    if (ranges.orange && level >= ranges.orange[0]) return 'Orange';
+    if (ranges.yellow && level >= ranges.yellow[0]) return 'Yellow';
+    return null;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────
 
 function percentile(arr, p) {
@@ -99,14 +167,16 @@ function parseWeaponCSV(csvText) {
         if (!weaponGroups[wKey]) weaponGroups[wKey] = [];
         weaponGroups[wKey].push(price);
 
-        // Bonuses + combos
+        // Bonuses + combos (grouped by BONUS COLOR, not weapon rarity)
         const bonusId1 = cols[14];
         if (bonusId1 && BONUS_ID_MAP[bonusId1]) {
             const bName1 = BONUS_ID_MAP[bonusId1];
-            const bKey1 = bName1 + '|' + rarityName;
+            const bLevel1 = parseInt(cols[15], 10);
+            const bColor1 = getBonusColor(bonusId1, bLevel1) || rarityName;
+            const bKey1 = bName1 + '|' + bColor1;
             if (!bonusGroups[bKey1]) bonusGroups[bKey1] = [];
             bonusGroups[bKey1].push(price);
-            const cbKey1 = weaponName + '|' + bName1 + '|' + rarityName;
+            const cbKey1 = weaponName + '|' + bName1 + '|' + bColor1;
             if (!comboGroups[cbKey1]) comboGroups[cbKey1] = [];
             comboGroups[cbKey1].push(price);
         }
@@ -114,10 +184,12 @@ function parseWeaponCSV(csvText) {
             const bonusId2 = cols[16];
             if (bonusId2 && BONUS_ID_MAP[bonusId2]) {
                 const bName2 = BONUS_ID_MAP[bonusId2];
-                const bKey2 = bName2 + '|' + rarityName;
+                const bLevel2 = parseInt(cols[17], 10);
+                const bColor2 = getBonusColor(bonusId2, bLevel2) || rarityName;
+                const bKey2 = bName2 + '|' + bColor2;
                 if (!bonusGroups[bKey2]) bonusGroups[bKey2] = [];
                 bonusGroups[bKey2].push(price);
-                const cbKey2 = weaponName + '|' + bName2 + '|' + rarityName;
+                const cbKey2 = weaponName + '|' + bName2 + '|' + bColor2;
                 if (!comboGroups[cbKey2]) comboGroups[cbKey2] = [];
                 comboGroups[cbKey2].push(price);
             }
