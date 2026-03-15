@@ -106,11 +106,14 @@ function parseWeaponCSV(csvText) {
         const bonusId2 = (cols.length > 16) ? cols[16] : null;
         const bName2 = (bonusId2 && BONUS_ID_MAP[bonusId2]) ? BONUS_ID_MAP[bonusId2] : null;
 
+        const qual1 = cols[15] ? parseInt(cols[15], 10) : 0;
+        const qual2 = (cols.length > 17 && cols[17]) ? parseInt(cols[17], 10) : 0;
+
         if (!weaponMaxBonus[wKey] || price > weaponMaxBonus[wKey].price) {
-            const bonusNames = [];
-            if (bName1) bonusNames.push(bName1);
-            if (bName2) bonusNames.push(bName2);
-            weaponMaxBonus[wKey] = { price: price, bonuses: bonusNames };
+            const bonusEntries = [];
+            if (bName1) bonusEntries.push(bName1 + (qual1 > 0 ? ' ' + qual1 + '%' : ''));
+            if (bName2) bonusEntries.push(bName2 + (qual2 > 0 ? ' ' + qual2 + '%' : ''));
+            weaponMaxBonus[wKey] = { price: price, bonuses: bonusEntries };
         }
 
         // Bonuses + combos (grouped by weapon rarity — CDN has no bonus level data)
