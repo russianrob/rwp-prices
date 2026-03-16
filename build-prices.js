@@ -78,6 +78,7 @@ function parseWeaponCSV(csvText) {
     const bonusGroups = {};
     const classGroups = {};
     const comboGroups = {};
+    const comboMaxTracker = {};  // combo key -> { price, qual } for max-priced sale
     const weaponMaxBonus = {};  // track bonus on highest sale per weapon+rarity
 
     for (let i = 1; i < lines.length; i++) {
@@ -124,6 +125,9 @@ function parseWeaponCSV(csvText) {
             const cbKey1 = weaponName + '|' + bName1 + '|' + rarityName;
             if (!comboGroups[cbKey1]) comboGroups[cbKey1] = [];
             comboGroups[cbKey1].push(price);
+            if (!comboMaxTracker[cbKey1] || price > comboMaxTracker[cbKey1].price) {
+                comboMaxTracker[cbKey1] = { price: price, qual: qual1 };
+            }
         }
         if (bName2) {
             const bKey2 = bName2 + '|' + rarityName;
@@ -132,6 +136,9 @@ function parseWeaponCSV(csvText) {
             const cbKey2 = weaponName + '|' + bName2 + '|' + rarityName;
             if (!comboGroups[cbKey2]) comboGroups[cbKey2] = [];
             comboGroups[cbKey2].push(price);
+            if (!comboMaxTracker[cbKey2] || price > comboMaxTracker[cbKey2].price) {
+                comboMaxTracker[cbKey2] = { price: price, qual: qual2 };
+            }
         }
 
         // Class group
@@ -143,7 +150,7 @@ function parseWeaponCSV(csvText) {
         }
     }
 
-    function computePercentiles(groups, splitCount) {
+    function computePercentiles(groups, splitCount, maxTracker) {
         const result = {};
         for (const key of Object.keys(groups)) {
             const parts = key.split('|');
@@ -152,12 +159,17 @@ function parseWeaponCSV(csvText) {
             const name = splitCount === 3 ? parts[0] + '|' + parts[1] : parts[0];
             const rar = parts[splitCount - 1];
             if (!result[name]) result[name] = {};
-            result[name][rar] = [
+            const entry = [
                 arr[0],
                 Math.round(percentile(arr, 50)),
                 arr[arr.length - 1],
                 arr.length
             ];
+            // Append max-sale bonus quality % as 5th element for combos
+            if (maxTracker && maxTracker[key] && maxTracker[key].qual > 0) {
+                entry.push(maxTracker[key].qual + '%');
+            }
+            result[name][rar] = entry;
         }
         return result;
     }
@@ -178,7 +190,7 @@ function parseWeaponCSV(csvText) {
         weaponPrices: computePercentiles(weaponGroups, 2),
         bonusPrices: computePercentiles(bonusGroups, 2),
         classPrices: computePercentiles(classGroups, 2),
-        weaponComboPrices: computePercentiles(comboGroups, 3),
+        weaponComboPrices: computePercentiles(comboGroups, 3, comboMaxTracker),
         weaponMaxBonus: maxBonusMap
     };
 }
