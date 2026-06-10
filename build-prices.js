@@ -195,13 +195,13 @@ function parseWeaponCSV(csvText) {
         for (const key of Object.keys(groups)) {
             const parts = key.split('|');  // weapon, bonus, rarity, level
             const arr = groups[key].sort((a, b) => a - b);
-            if (arr.length < 5) continue;
+            if (arr.length < 3) continue;
             const wbKey = parts[0] + '|' + parts[1];
             const rar = parts[2];
             const lvl = parts[3];
             if (!result[wbKey]) result[wbKey] = {};
             if (!result[wbKey][rar]) result[wbKey][rar] = {};
-            result[wbKey][rar][lvl] = Math.round(percentile(arr, 50));
+            result[wbKey][rar][lvl] = [Math.round(percentile(arr, 50)), arr.length];
         }
         return result;
     }
