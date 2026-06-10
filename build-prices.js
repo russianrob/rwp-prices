@@ -78,6 +78,7 @@ function parseWeaponCSV(csvText) {
     const bonusGroups = {};
     const classGroups = {};
     const comboGroups = {};
+    const pairGroups = {};   // weapon|bonusA+bonusB|rarity -> [prices] (double-bonus)
     const comboMaxTracker = {};  // combo key -> { price, qual } for max-priced sale
     const weaponMaxBonus = {};  // track bonus on highest sale per weapon+rarity
 
@@ -141,6 +142,13 @@ function parseWeaponCSV(csvText) {
             }
         }
 
+        // Double-bonus exact combo (both bonuses present on the same sale)
+        if (bName1 && bName2 && bName1 !== bName2) {
+            const pgKey = weaponName + '|' + (bName1 < bName2 ? bName1 + '+' + bName2 : bName2 + '+' + bName1) + '|' + rarityName;
+            if (!pairGroups[pgKey]) pairGroups[pgKey] = [];
+            pairGroups[pgKey].push(price);
+        }
+
         // Class group
         const cls = WEAPON_CLASS[weaponName];
         if (cls) {
@@ -191,6 +199,7 @@ function parseWeaponCSV(csvText) {
         bonusPrices: computePercentiles(bonusGroups, 2),
         classPrices: computePercentiles(classGroups, 2),
         weaponComboPrices: computePercentiles(comboGroups, 3, comboMaxTracker),
+        weaponPairComboPrices: computePercentiles(pairGroups, 3),
         weaponMaxBonus: maxBonusMap
     };
 }
@@ -311,6 +320,7 @@ async function main() {
         armourBonusPrices: armour.armourBonusPrices,
         armourSetPrices: armour.armourSetPrices,
         weaponComboPrices: weapon.weaponComboPrices,
+        weaponPairComboPrices: weapon.weaponPairComboPrices,
         armourComboPrices: armour.armourComboPrices,
         weaponMaxBonus: weapon.weaponMaxBonus,
         timestamp: Date.now()
