@@ -79,6 +79,7 @@ function parseWeaponCSV(csvText) {
     const classGroups = {};
     const comboGroups = {};
     const pairGroups = {};   // weapon|bonusA+bonusB|rarity -> [prices] (double-bonus)
+    const levelGroups = {};  // weapon|bonus|rarity|level -> [prices] (single-bonus only)
     const comboMaxTracker = {};  // combo key -> { price, qual } for max-priced sale
     const weaponMaxBonus = {};  // track bonus on highest sale per weapon+rarity
 
@@ -149,6 +150,13 @@ function parseWeaponCSV(csvText) {
             pairGroups[pgKey].push(price);
         }
 
+        // Per-level: single-bonus sales only, keyed by exact bonus %
+        if (bName1 && !bName2 && qual1 > 0) {
+            const lgKey = weaponName + '|' + bName1 + '|' + rarityName + '|' + qual1;
+            if (!levelGroups[lgKey]) levelGroups[lgKey] = [];
+            levelGroups[lgKey].push(price);
+        }
+
         // Class group
         const cls = WEAPON_CLASS[weaponName];
         if (cls) {
@@ -182,6 +190,22 @@ function parseWeaponCSV(csvText) {
         return result;
     }
 
+    function computeLevelPrices(groups) {
+        const result = {};
+        for (const key of Object.keys(groups)) {
+            const parts = key.split('|');  // weapon, bonus, rarity, level
+            const arr = groups[key].sort((a, b) => a - b);
+            if (arr.length < 5) continue;
+            const wbKey = parts[0] + '|' + parts[1];
+            const rar = parts[2];
+            const lvl = parts[3];
+            if (!result[wbKey]) result[wbKey] = {};
+            if (!result[wbKey][rar]) result[wbKey][rar] = {};
+            result[wbKey][rar][lvl] = Math.round(percentile(arr, 50));
+        }
+        return result;
+    }
+
     // Build max bonus map: weaponName -> { rarity: [bonus1, bonus2, ...] }
     const maxBonusMap = {};
     for (const key of Object.keys(weaponMaxBonus)) {
@@ -200,6 +224,7 @@ function parseWeaponCSV(csvText) {
         classPrices: computePercentiles(classGroups, 2),
         weaponComboPrices: computePercentiles(comboGroups, 3, comboMaxTracker),
         weaponPairComboPrices: computePercentiles(pairGroups, 3),
+        weaponLevelPrices: computeLevelPrices(levelGroups),
         weaponMaxBonus: maxBonusMap
     };
 }
@@ -321,6 +346,7 @@ async function main() {
         armourSetPrices: armour.armourSetPrices,
         weaponComboPrices: weapon.weaponComboPrices,
         weaponPairComboPrices: weapon.weaponPairComboPrices,
+        weaponLevelPrices: weapon.weaponLevelPrices,
         armourComboPrices: armour.armourComboPrices,
         weaponMaxBonus: weapon.weaponMaxBonus,
         timestamp: Date.now()
