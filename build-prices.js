@@ -48,9 +48,12 @@ function percentile(arr, p) {
     return arr[lower] + (arr[upper] - arr[lower]) * (idx - lower);
 }
 
-function fetchGzip(url) {
+// One attempt at the CDN. Given a timeout, because a connection that hangs
+// forever is worse than one that fails: the job has no deadline of its own and
+// would sit there until the runner is killed.
+function fetchGzipOnce(url, timeoutMs) {
     return new Promise((resolve, reject) => {
-        https.get(url, (resp) => {
+        const req = https.get(url, (resp) => {
             if (resp.statusCode !== 200) {
                 reject(new Error(`HTTP ${resp.statusCode} for ${url}`));
                 resp.resume();
@@ -66,8 +69,37 @@ function fetchGzip(url) {
                 });
             });
             resp.on('error', reject);
-        }).on('error', reject);
+        });
+        req.on('error', reject);
+        req.setTimeout(timeoutMs, () => {
+            req.destroy(new Error(`timed out after ${timeoutMs}ms: ${url}`));
+        });
     });
+}
+
+/**
+ * Fetch with retries.
+ *
+ * The run on 2026-09-22 died on `read ECONNRESET` partway through the armour
+ * CSV — the weapon file had already downloaded fine, and the CDN was healthy
+ * again minutes later. A single transient reset should not cost a price
+ * refresh, so each download gets three attempts with a widening gap. The
+ * files are ~2-11MB, so a retry is cheap next to publishing stale prices.
+ */
+async function fetchGzip(url, attempts = 3, timeoutMs = 90000) {
+    let lastErr;
+    for (let i = 1; i <= attempts; i++) {
+        try {
+            return await fetchGzipOnce(url, timeoutMs);
+        } catch (err) {
+            lastErr = err;
+            if (i === attempts) break;
+            const wait = i * 5000;
+            console.log(`  attempt ${i}/${attempts} failed (${err.code || err.message}); retrying in ${wait / 1000}s`);
+            await new Promise((r) => setTimeout(r, wait));
+        }
+    }
+    throw lastErr;
 }
 
 // ─── Weapon CSV parsing ──────────────────────────────────────
